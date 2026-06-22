@@ -1,0 +1,14 @@
+services:
+  ecnl-mcp:
+    build: .
+    image: jk-mcp-ecnl:latest
+    environment:
+      # Run as a networked HTTP server rather than stdio.
+      MCP_TRANSPORT: streamable-http
+      HOST: 0.0.0.0
+      PORT: "8000"
+      MCP_PATH: /mcp/ecnl
+      API_HOST: https://api.athleteone.com
+      LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
