@@ -16,6 +16,7 @@ Built as a sibling to [`jk-mcp-nwsl`](../jk-mcp-nwsl): Python 3.13, FastMCP,
 - [Quickstart](#quickstart)
 - [Configuration](#configuration)
 - [Tools](#tools)
+- [Example prompts](#example-prompts)
 - [Development](#development)
 - [How it works](#how-it-works)
 - [License](#license)
@@ -102,6 +103,49 @@ exclude the rated team from each opponent's record. Note: within a single
 conference (typically a complete round-robin) OWP/OOWP converge to ~0.5, so RPI
 ≈ WP there — RPI's discriminating power comes from cross-conference pools, a
 planned future enhancement (see the ADR).
+
+## Example prompts
+
+Once the server is connected, ask Claude natural-language questions — it chains
+the tools for you (typically `find_events` → `get_event_overview` →
+`get_standings`/`get_schedule`/`get_rpi`), resolving the event, division, and
+flight IDs along the way. You never supply IDs yourself. Age groups map to
+birth-year divisions (e.g. "U17" ≈ the `G2008/2007` division).
+
+**Discovering events**
+
+- "What ECNL girls conferences are there this season?"
+- "List the ECRL boys events for 2025-26."
+- "Is there an ECNL boys conference in Northern California?"
+
+**Standings**
+
+- "Show me the ECNL Girls Southwest U17 standings."
+- "Who's top of the table in ECNL Boys Northern Cal U16?"
+- "How many points separate the top three teams in ECRL Girls Carolinas?"
+
+**Schedules & results**
+
+- "What's the schedule for the ECNL Girls Southeast U15 flight?"
+- "What were last weekend's scores in ECNL Boys Texas U17?"
+- "When does Slammers FC HB Koge play next?"
+- "Give me Beach FC's results so far this season."
+
+**Teams & clubs**
+
+- "Which clubs are competing in the ECNL Girls Southwest event?"
+- "List the teams in the ECNL Boys Northern Cal U16 flight."
+
+**RPI analysis**
+
+- "Rank the ECNL Girls Southwest U17 flight by RPI."
+- "What's Slammers FC's RPI, broken down into WP, OWP, and OOWP?"
+- "Recompute that flight's RPI using the pre-2024 ½ tie weight."
+- "In ECRL Boys Carolinas, which team has the strongest opponents (highest OWP)?"
+
+**Playoffs**
+
+- "Is there a playoff bracket for the ECNL Girls Southwest U19 flight?"
 
 ## Development
 
