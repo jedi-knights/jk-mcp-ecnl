@@ -1,6 +1,6 @@
 [project]
 name = "jk-mcp-ecnl"
-version = "0.1.0"
+version = "0"
 description = "MCP server for ECNL/ECRL youth soccer schedules, standings, and RPI via the Total Global Sports / AthleteOne public API"
 requires-python = ">=3.13"
 dependencies = [
