@@ -1,5 +1,11 @@
 # jk-mcp-ecnl
 
+[![CI](https://github.com/jedi-knights/jk-mcp-ecnl/actions/workflows/ci.yml/badge.svg)](https://github.com/jedi-knights/jk-mcp-ecnl/actions/workflows/ci.yml)
+[![Badge](https://github.com/jedi-knights/jk-mcp-ecnl/actions/workflows/badge.yml/badge.svg)](https://github.com/jedi-knights/jk-mcp-ecnl/actions/workflows/badge.yml)
+[![Coverage](https://img.shields.io/badge/Coverage-92%25-brightgreen)](https://jedi-knights.github.io/jk-mcp-ecnl/)
+[![Python](https://img.shields.io/badge/python-3.13-blue)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 An MCP server for **ECNL** (Elite Clubs National League) and **ECRL** (ECNL
 Regional League) youth soccer — schedules, standings, and RPI for both boys and
 girls — backed by the public Total Global Sports / AthleteOne API that powers

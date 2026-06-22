@@ -1,0 +1,48 @@
+name: Badge
+
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  badge:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          token: ${{ secrets.GH_TOKEN }}
+
+      - uses: astral-sh/setup-uv@v8.1.0
+
+      - run: uv sync --frozen
+
+      - run: uv run pytest --cov=src/ecnl --cov-report=html --cov-report=xml
+
+      - name: Update coverage badge
+        uses: jedi-knights/coverage-badge@v0
+        env:
+          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/?v=${{ github.run_number }}
+
+      - name: Commit badge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git diff --quiet README.md || (git add README.md && git commit -m "chore: update coverage badge [skip ci]" && git push)
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: htmlcov/
+
+      - id: deploy
+        uses: actions/deploy-pages@v5
