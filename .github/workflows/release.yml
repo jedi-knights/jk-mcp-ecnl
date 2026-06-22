@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  release:
+    if: github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "semantic-release-bot"
+          git config user.email "semantic-release-bot@users.noreply.github.com"
+
+      - name: Run semantic release
+        uses: jedi-knights/go-semantic-release@v0.10.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        id: release
+        run: |
+          # go-semantic-release may partially complete (tag pushed, publish failed).
+          # Scan all tags and create GitHub Releases for any that are missing one.
+          # This is idempotent: existing releases are skipped.
+          LATEST_TAG=""
+          for TAG in $(git tag --sort=version:refname); do
+            if ! gh release view "${TAG}" > /dev/null 2>&1; then
+              echo "Creating release for ${TAG}"
+              gh release create "${TAG}" --title "${TAG}" --generate-notes --verify-tag
+              LATEST_TAG="${TAG}"
+            fi
+          done
+          # `released` gates every downstream step (version sync, tags, deploy) on
+          # an actual new release this run. VERSION is committed to the repo, so a
+          # file-existence check would always pass and redeploy on every main push.
+          if [ -n "${LATEST_TAG}" ]; then
+            echo "${LATEST_TAG#v}" > VERSION
+            echo "VERSION set to ${LATEST_TAG#v}"
+            echo "released=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No new release this run — skipping version sync, tagging, and deploy."
+            echo "released=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        if: steps.release.outputs.released == 'true'
+
+      - name: Update version files
+        if: steps.release.outputs.released == 'true'
+        run: |
+          NEW_VERSION=$(cat VERSION)
+          sed -i "s/^version = \".*\"/version = \"${NEW_VERSION}\"/" pyproject.toml
+          uv lock
+
+      - name: Commit generated files
+        if: steps.release.outputs.released == 'true'
+        run: |
+          git add VERSION pyproject.toml uv.lock
+          if [ -f CHANGELOG.md ]; then git add CHANGELOG.md; fi
+          git diff --cached --quiet || git commit -m "chore(release): update version files [skip ci]"
+          git push origin HEAD:main
+
+      - name: Update floating major-version tag
+        if: steps.release.outputs.released == 'true'
+        run: |
+          MAJOR="v$(cut -d. -f1 VERSION)"
+          git tag -fa "${MAJOR}" -m "Release ${MAJOR} (floating)"
+          git push origin "${MAJOR}" --force
+
+      - name: Install flyctl
+        if: steps.release.outputs.released == 'true'
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        if: steps.release.outputs.released == 'true'
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

@@ -1,0 +1,5 @@
+extends:
+  - conventional
+rules:
+  body-max-line-length:
+    - 0

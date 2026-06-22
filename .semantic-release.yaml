@@ -1,0 +1,32 @@
+# Configuration for jedi-knights/go-semantic-release.
+# https://github.com/jedi-knights/go-semantic-release
+
+release_mode: repo
+tag_format: "v{{.Version}}"
+dry_run: false
+
+branches:
+  - name: main
+    is_default: true
+
+prepare:
+  changelog_file: CHANGELOG.md
+  version_files:
+    - VERSION
+
+git:
+  assets:
+    - CHANGELOG.md
+    - VERSION
+  message: "chore(release): {{.Version}} [skip ci]\n\n{{.Notes}}"
+
+github:
+  # The release workflow's "Create GitHub Release" step uses `gh release create`
+  # with a PAT to publish releases — the action's built-in publisher is left
+  # disabled because it would otherwise call the GitHub Releases API with the
+  # default GITHUB_TOKEN and an empty owner/repo (no defaults), producing a 404
+  # that surfaced as a workflow failure annotation despite the overall run
+  # succeeding via continue-on-error.
+  create_release: false
+  owner: jedi-knights
+  repo: jk-mcp-ecnl
