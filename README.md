@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/jedi-knights/jk-mcp-ecnl/actions/workflows/ci.yml/badge.svg)](https://github.com/jedi-knights/jk-mcp-ecnl/actions/workflows/ci.yml)
 [![Badge](https://github.com/jedi-knights/jk-mcp-ecnl/actions/workflows/badge.yml/badge.svg)](https://github.com/jedi-knights/jk-mcp-ecnl/actions/workflows/badge.yml)
-[![Coverage](https://img.shields.io/badge/Coverage-92.5%25-brightgreen)](https://jedi-knights.github.io/jk-mcp-ecnl/)
+[![Coverage](https://img.shields.io/badge/Coverage-92.8%25-brightgreen)](https://jedi-knights.github.io/jk-mcp-ecnl/)
 [![Python](https://img.shields.io/badge/python-3.13-blue)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
