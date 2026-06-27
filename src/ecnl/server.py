@@ -29,6 +29,7 @@ from .adapters.outbound.caching_adapter import CachingAdapter
 from .adapters.outbound.discovery import DiscoveryAdapter
 from .adapters.outbound.retry_adapter import RetryingAdapter
 from .application.service import ECNLService
+from .observability import setup_tracing
 
 
 class _JsonFormatter(logging.Formatter):
@@ -94,11 +95,12 @@ def main() -> None:
     """Start the ECNL MCP server.
 
     Reads configuration from the environment:
-      API_HOST       — base URL of the AthleteOne API (default: https://api.athleteone.com)
-      MCP_TRANSPORT  — "stdio" (default) or "streamable-http"
-      HOST           — bind address for HTTP transport (default: 0.0.0.0)
-      PORT           — TCP port for HTTP transport (default: 8000)
-      MCP_PATH       — URL path for streamable-http transport (default: /mcp/ecnl)
+      API_HOST              — base URL of the AthleteOne API (default: https://api.athleteone.com)
+      MCP_TRANSPORT         — "stdio" (default) or "streamable-http"
+      HOST                  — bind address for HTTP transport (default: 0.0.0.0)
+      PORT                  — TCP port for HTTP transport (default: 8000)
+      MCP_PATH              — URL path for streamable-http transport (default: /mcp/ecnl)
+      MCP_TRACING_ENABLED   — bootstrap the OpenTelemetry SDK (default false)
     """
     api_host = os.environ.get("API_HOST", "https://api.athleteone.com")
     transport = os.environ.get("MCP_TRANSPORT", "stdio").lower()
@@ -109,12 +111,21 @@ def main() -> None:
     if transport not in _VALID_TRANSPORTS:
         raise ValueError(f"Invalid MCP_TRANSPORT={transport!r}. Must be one of: {', '.join(_VALID_TRANSPORTS)}")
 
-    if transport == "streamable-http":
-        logger.info("Starting ECNL MCP server (streamable-http transport, %s:%s, path=%s)", host, port, path)
-        build_server(host=host, port=port, api_host=api_host, path=path).run(transport="streamable-http")
-    else:
-        logger.info("Starting ECNL MCP server (stdio transport)")
-        build_server(api_host=api_host).run(transport="stdio")
+    # Wire OpenTelemetry before constructing the server so the
+    # HTTPXClientInstrumentor patches httpx before any outbound
+    # adapters are instantiated. A no-op when MCP_TRACING_ENABLED is
+    # unset; the returned shutdown is invoked on normal exit via
+    # try/finally so buffered spans flush.
+    shutdown_tracing = setup_tracing("jk-mcp-ecnl")
+    try:
+        if transport == "streamable-http":
+            logger.info("Starting ECNL MCP server (streamable-http transport, %s:%s, path=%s)", host, port, path)
+            build_server(host=host, port=port, api_host=api_host, path=path).run(transport="streamable-http")
+        else:
+            logger.info("Starting ECNL MCP server (stdio transport)")
+            build_server(api_host=api_host).run(transport="stdio")
+    finally:
+        shutdown_tracing()
 
 
 if __name__ == "__main__":
