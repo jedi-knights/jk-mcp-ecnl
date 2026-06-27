@@ -204,6 +204,28 @@ Restart Claude Desktop after saving. The ECNL tools will appear in the tool pick
 
 ---
 
+## Roadmap — tool authorization
+
+Tools are currently open on both transports. Tool annotations (`readOnlyHint`,
+`destructiveHint`, `idempotentHint`) signal *intent*, but nothing enforces it
+at runtime. The portfolio-wide [agentic-posture page](https://github.com/jedi-knights/architecture/blob/main/docs/agentic-posture.md)
+lays out a phased plan to close that gap (P1):
+
+- Streamable HTTP transport will require a bearer token verified against
+  `identity-platform-go` JWKS. Stdio remains unauthenticated (subprocess trust
+  boundary).
+- A new authorization port consulted before every tool dispatch, backed by an
+  adapter that calls `authorization-policy-service` with `{actor_type,
+  agent_id, tool_name, args}`.
+- Tool annotations extend to `sensitivity`, `cost_class`, `rate_limit_class`.
+- Per-call audit events emitted using the schema proposed in
+  identity-platform-go ADR-0018.
+
+The plan mirrors `jk-mcp-nwsl` — both servers share the template, so changes
+will land in lockstep.
+
+---
+
 ## Requirements
 
 - [Python 3.13+](https://www.python.org/downloads/)
