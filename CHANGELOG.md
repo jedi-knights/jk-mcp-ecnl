@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 (2026-06-27)
+
+### Features
+
+- **observability:** wire OpenTelemetry tracing for MCP server (a928153)
+
 ## 0.1.0 (2026-06-22)
 
 ### Features
