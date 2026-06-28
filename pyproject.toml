@@ -18,6 +18,10 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http>=1.27.0",
     "opentelemetry-instrumentation-httpx>=0.48b0",
     "opentelemetry-instrumentation-starlette>=0.48b0",
+    # PyJWT[crypto] — wired by ecnl.security.token_verifier when
+    # MCP_AUTH_ENABLED=true. Brings the cryptography backends PyJWT
+    # needs to verify RS256 signatures from the auth-server JWKS.
+    "pyjwt[crypto]>=2.8.0",
 ]
 
 [build-system]

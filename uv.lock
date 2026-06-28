@@ -430,6 +430,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-httpx" },
     { name = "opentelemetry-instrumentation-starlette" },
     { name = "opentelemetry-sdk" },
+    { name = "pyjwt", extra = ["crypto"] },
     { name = "python-dotenv" },
 ]
 
@@ -455,6 +456,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-httpx", specifier = ">=0.48b0" },
     { name = "opentelemetry-instrumentation-starlette", specifier = ">=0.48b0" },
     { name = "opentelemetry-sdk", specifier = ">=1.27.0" },
+    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.8.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
 ]
 

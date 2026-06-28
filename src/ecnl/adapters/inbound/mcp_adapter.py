@@ -53,6 +53,8 @@ def create_mcp_server(
     host: str = "0.0.0.0",
     port: int = 8000,
     path: str = "/mcp",
+    auth_settings=None,
+    token_verifier=None,
 ) -> FastMCP:
     """Wire the application service into a FastMCP instance and register tools.
 
@@ -62,8 +64,19 @@ def create_mcp_server(
         port: TCP port for HTTP transport (ignored for stdio). Defaults to 8000.
         path: URL path the streamable-http transport is served at (ignored for
             stdio). Each MCP server uses a distinct path (e.g. ``/mcp/ecnl``).
+        auth_settings: Optional ``mcp.server.auth.settings.AuthSettings`` that
+            enables bearer-token enforcement on the streamable-http transport.
+        token_verifier: Optional ``TokenVerifier`` consulted on every request.
     """
-    mcp = FastMCP("ecnl", host=host, port=port, stateless_http=True, streamable_http_path=path)
+    mcp = FastMCP(
+        "ecnl",
+        host=host,
+        port=port,
+        stateless_http=True,
+        streamable_http_path=path,
+        auth=auth_settings,
+        token_verifier=token_verifier,
+    )
 
     mcp.custom_route("/livez", methods=["GET"])(_handle_livez)
     mcp.custom_route("/readyz", methods=["GET"])(_handle_readyz)
