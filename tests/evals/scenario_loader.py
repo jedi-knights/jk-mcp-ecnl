@@ -54,12 +54,17 @@ class Scenario:
       tool outputs for the scenario to pass. Treated as a substring
       check — case-insensitive on Windows-style line endings would be
       brittle, so the match is exact.
+    * ``live`` — when True the scenario opts in to live-instance replay
+      via ``MCP_EVAL_REMOTE_URL``. Scenarios whose ``expected_contains``
+      depend on stub-specific values must stay False so the in-process
+      run and the live run agree on pass/fail semantics.
     """
 
     name: str
     description: str
     tool_sequence: list[ToolCall]
     expected_contains: list[str]
+    live: bool = False
 
 
 _SCENARIOS_DIR = Path(__file__).parent / "scenarios"
@@ -99,4 +104,5 @@ def _parse_scenario(path: Path) -> Scenario:
         description=str(raw["description"]),
         tool_sequence=tools,
         expected_contains=[str(s) for s in raw["expected_contains"]],
+        live=bool(raw.get("live", False)),
     )
