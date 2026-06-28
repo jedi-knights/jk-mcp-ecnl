@@ -86,6 +86,23 @@ class AuthorizationRequest:
     tool_name: str
     """The name of the MCP tool being invoked, e.g. ``get_standings``."""
 
+    sensitivity: str = "public"
+    """Architecture-roadmap classification for the tool's data
+    sensitivity. Forwarded so policy engines can branch on it without
+    a separate tool-catalog lookup. Empty / unrecognised values
+    default to ``public`` at the adapter boundary."""
+
+    cost_class: str = "metered"
+    """Architecture-roadmap classification for the cost profile of
+    the call. ``metered`` means the operator pays per upstream
+    request; ``billable`` means the call emits a Lago billing event;
+    ``free`` means a no-op cache hit."""
+
+    rate_limit_class: str = "standard"
+    """Architecture-roadmap classification for the rate-limit bucket.
+    The actual ceiling lives in deployment config — this field is
+    the bucket key only."""
+
 
 class Authorizer(Protocol):
     """Inbound authorization port.
