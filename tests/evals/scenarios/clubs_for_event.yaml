@@ -1,0 +1,12 @@
+name: clubs_for_event
+description: |
+  User asks "Which clubs are competing in event 3933?"
+  The agent should call get_clubs with the event id and list every
+  participating club's name and city.
+tool_sequence:
+  - tool: get_clubs
+    args:
+      event_id: 3933
+expected_contains:
+  - "Sample SC"
+  - "Boston"

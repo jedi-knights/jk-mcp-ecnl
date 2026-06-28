@@ -1,0 +1,32 @@
+name: Evals
+
+# Nightly drift-detection run. Replays every scenario in
+# tests/evals/scenarios/ against the in-process MCP server. Sufficient
+# to catch regressions in the formatter / tool-dispatch chain.
+#
+# A future revision wires MCP_EVAL_REMOTE_URL so the same scenarios
+# replay against the deployed Fly instance — uncovering upstream-API
+# shape changes that the in-process stub cannot detect.
+
+on:
+  schedule:
+    # Daily at 09:15 UTC (offset by 15 min from jk-mcp-nwsl so the
+    # AthleteOne upstream is not slammed by simultaneous runs once we
+    # promote to live-instance replay).
+    - cron: "15 9 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Replay scenarios
+        run: uv run pytest tests/evals/ -v
