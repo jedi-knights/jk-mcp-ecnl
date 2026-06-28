@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0 (2026-06-28)
+
+### Features
+
+- **authorization:** inbound port + adapter consulted on every tool dispatch (P1) (89ac9ad)
+
 ## 0.3.0 (2026-06-28)
 
 ### Features
