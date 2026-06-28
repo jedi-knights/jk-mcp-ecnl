@@ -1,0 +1,10 @@
+name: find_events_basic
+description: |
+  User asks "What ECNL Girls events are running this season?"
+  The agent should call find_events with no narrowing arguments and
+  surface the event names + conference.
+tool_sequence:
+  - tool: find_events
+expected_contains:
+  - "North Atlantic"
+  - "2025-26"
