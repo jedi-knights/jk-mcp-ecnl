@@ -58,6 +58,13 @@ class Scenario:
       via ``MCP_EVAL_REMOTE_URL``. Scenarios whose ``expected_contains``
       depend on stub-specific values must stay False so the in-process
       run and the live run agree on pass/fail semantics.
+    * ``expected_judge`` — semantic criteria graded by the LLM-as-judge
+      backend (:mod:`tests.evals.judge`). Each criterion is sent to
+      Claude separately with the joined tool output; the scenario
+      passes the judge step when every criterion is graded PASS.
+      Empty by default — substring assertions cover the deterministic
+      case; the judge is for outputs whose phrasing varies (live data,
+      formatter refactors) but whose meaning should be preserved.
     """
 
     name: str
@@ -65,6 +72,7 @@ class Scenario:
     tool_sequence: list[ToolCall]
     expected_contains: list[str]
     live: bool = False
+    expected_judge: list[str] = field(default_factory=list)
 
 
 _SCENARIOS_DIR = Path(__file__).parent / "scenarios"
@@ -105,4 +113,5 @@ def _parse_scenario(path: Path) -> Scenario:
         tool_sequence=tools,
         expected_contains=[str(s) for s in raw["expected_contains"]],
         live=bool(raw.get("live", False)),
+        expected_judge=[str(s) for s in (raw.get("expected_judge") or [])],
     )

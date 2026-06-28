@@ -43,6 +43,11 @@ dev = [
     "ruff>=0.9.0",
     # PyYAML is the scenario-file format for tests/evals/.
     "pyyaml>=6.0",
+    # anthropic SDK is the LLM-as-judge backend for tests/evals/judge.py.
+    # Only invoked when ANTHROPIC_API_KEY is set in the environment, so
+    # contributor PR runs without the key skip judge tests cleanly. Dev
+    # dep, not a runtime requirement.
+    "anthropic>=0.40",
 ]
 
 [tool.ruff]
