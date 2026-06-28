@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 (2026-06-28)
+
+### Features
+
+- **security:** bearer token auth on streamable-http transport (P1) (f310bd5)
+
+### Bug Fixes
+
+- **security:** apply ruff format (ce60cd8)
+
 ## 0.2.0 (2026-06-27)
 
 ### Features
