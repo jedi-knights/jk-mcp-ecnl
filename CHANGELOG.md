@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0 (2026-06-28)
+
+### Features
+
+- **evals:** live-instance replay via MCP_EVAL_REMOTE_URL (P2) (#11) (9a4a01d)
+
 ## 0.5.0 (2026-06-28)
 
 ### Features
