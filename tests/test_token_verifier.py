@@ -92,9 +92,14 @@ def _jwk_json_from_pem(public_pem: bytes, kid: str) -> str:
     return json.dumps({"kty": "RSA", "kid": kid, "alg": "RS256", "n": b64url(n), "e": b64url(e), "use": "sig"})
 
 
-def _verifier_with_jwks(private_pem: bytes, public_pem: bytes, *, kid: str = "k1",
-                       issuer: str = "https://auth.test",
-                       audience: str | None = "https://mcp.test") -> tuple[JWKSTokenVerifier, JWKSCache]:
+def _verifier_with_jwks(
+    private_pem: bytes,
+    public_pem: bytes,
+    *,
+    kid: str = "k1",
+    issuer: str = "https://auth.test",
+    audience: str | None = "https://mcp.test",
+) -> tuple[JWKSTokenVerifier, JWKSCache]:
     cache = JWKSCache(issuer_url=issuer)
     cache._keys = {kid: _jwk_from_public_pem(public_pem, kid)}
     cache._expires_at = time.time() + 3600

@@ -136,10 +136,21 @@ def main() -> None:
     shutdown_tracing = setup_tracing("jk-mcp-ecnl")
     try:
         if transport == "streamable-http":
-            logger.info("Starting ECNL MCP server (streamable-http transport, %s:%s, path=%s, auth=%s)",
-                        host, port, path, "on" if token_verifier else "off")
-            build_server(host=host, port=port, api_host=api_host, path=path,
-                         auth_settings=auth_settings, token_verifier=token_verifier).run(transport="streamable-http")
+            logger.info(
+                "Starting ECNL MCP server (streamable-http transport, %s:%s, path=%s, auth=%s)",
+                host,
+                port,
+                path,
+                "on" if token_verifier else "off",
+            )
+            build_server(
+                host=host,
+                port=port,
+                api_host=api_host,
+                path=path,
+                auth_settings=auth_settings,
+                token_verifier=token_verifier,
+            ).run(transport="streamable-http")
         else:
             logger.info("Starting ECNL MCP server (stdio transport)")
             build_server(api_host=api_host).run(transport="stdio")
