@@ -18,13 +18,113 @@ from ....ports.inbound import AuthorizationRequest, Authorizer
 
 logger = logging.getLogger(__name__)
 
-_READ_ANNOTATIONS = ToolAnnotations(
+_READ_ANNOTATIONS_BASE = ToolAnnotations(
     readOnlyHint=True,
     destructiveHint=False,
     idempotentHint=True,
     openWorldHint=True,
 )
-"""Annotation for tools that make read-only, idempotent calls to upstream APIs."""
+"""Standard MCP hints. Kept separately for tools that need only the
+spec-defined fields without the architecture-roadmap extensions."""
+
+
+# ---------------------------------------------------------------------------
+# Extended annotations (architecture/docs/agentic-posture.md — sensitivity,
+# cost_class, rate_limit_class)
+# ---------------------------------------------------------------------------
+
+
+# Sensitivity classifications surfaced to MCP clients (LLM gateways,
+# audit aggregators, policy engines). The values are intentionally
+# coarse — adding a class is cheap; partitioning an existing one is a
+# behaviour change for every consumer that branched on it.
+SENSITIVITY_PUBLIC = "public"
+"""Data is freely available to anyone with access to the upstream API.
+Default for the ECNL tools that wrap AthleteOne's public endpoints."""
+SENSITIVITY_INTERNAL = "internal"
+"""Data is not personally identifiable but the deployment treats it
+as confidential (rate-limited per-tenant, behind a private gateway,
+etc.). Reserved for future tools that surface enriched analytics."""
+SENSITIVITY_PII = "pii"
+"""Tool returns personally identifiable information. Reserved — no
+ECNL tool exposes PII today; the class is registered up-front so a
+future addition does not require coordinating a rename."""
+
+
+# Cost classifications. A consumer can use these to throttle, batch, or
+# defer expensive tool calls without inspecting per-call latency.
+COST_FREE = "free"
+"""Tool is a no-op cache lookup; safe to invoke at any rate. Reserved
+for future static-content tools."""
+COST_METERED = "metered"
+"""Tool calls an upstream API that the operator pays for per request.
+Default for every ECNL tool — AthleteOne, season-discovery are all
+metered upstreams."""
+COST_BILLABLE = "billable"
+"""Tool triggers downstream charges that flow through Lago (ADR-0019).
+Reserved for tools that explicitly emit billing events; today every
+ECNL tool is read-only so this is unused but registered for the
+identity-platform side of the portfolio."""
+
+
+# Rate-limit classifications. These pair with the per-deployment rate
+# limiter — the actual ceilings live in operator config, not here.
+RATE_LIMIT_LOW = "low"
+"""Tool participates in a slow / cheap bucket — e.g. one call per
+second per agent. Reserved for the analytics endpoints once we
+introduce per-class buckets."""
+RATE_LIMIT_STANDARD = "standard"
+"""Tool participates in the default rate-limit bucket. Today every
+ECNL tool falls here."""
+RATE_LIMIT_PREMIUM = "premium"
+"""Tool participates in a high-throughput bucket reserved for clients
+that pay for elevated limits. Reserved."""
+
+
+def read_annotations(
+    *,
+    sensitivity: str = SENSITIVITY_PUBLIC,
+    cost_class: str = COST_METERED,
+    rate_limit_class: str = RATE_LIMIT_STANDARD,
+    title: str | None = None,
+) -> ToolAnnotations:
+    """Build a read-only ToolAnnotations extended with the
+    architecture-roadmap fields (``sensitivity``, ``cost_class``,
+    ``rate_limit_class``).
+
+    The MCP SDK's ToolAnnotations Pydantic model is configured with
+    ``extra="allow"`` so the extension fields land on the wire next to
+    the standard hints — clients that don't know about them ignore
+    them per RFC-style forward compatibility, while RAR-aware policy
+    engines can route on them.
+
+    Defaults match the dominant pattern for the ECNL tools (public
+    soccer data, metered upstream, standard rate bucket). Stricter
+    tools override per-field.
+    """
+    extras: dict[str, str] = {
+        "sensitivity": sensitivity,
+        "cost_class": cost_class,
+        "rate_limit_class": rate_limit_class,
+    }
+    return ToolAnnotations(
+        title=title,
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=True,
+        **extras,
+    )
+
+
+_READ_ANNOTATIONS = read_annotations()
+"""Default read-only annotation set surfaced to every ECNL tool.
+
+Every ECNL tool today wraps a read-only public soccer-data endpoint
+so the default sensitivity/cost/rate-limit classifications are
+correct. Tools with different characteristics override by calling
+:func:`read_annotations` directly with explicit values.
+"""
 
 
 async def _safe_call[T](coro: Awaitable[T], fmt: Callable[[T], str]) -> str:
@@ -89,8 +189,15 @@ async def _authorize_tool(authorizer: Authorizer, tool_name: str) -> str | None:
     ``actor_type:<value>`` etc. — we parse them back into the
     AuthorizationRequest here so the application layer doesn't see
     the encoding.
+
+    The tool's architecture-roadmap annotations (sensitivity,
+    cost_class, rate_limit_class) are looked up from
+    :data:`_TOOL_ANNOTATIONS_REGISTRY` so the policy engine can branch
+    on the bucket without a separate catalog call. Missing entries
+    fall back to the public/metered/standard defaults.
     """
     actor = _read_actor()
+    annotations = _TOOL_ANNOTATIONS_REGISTRY.get(tool_name, _DEFAULT_TOOL_ANNOTATIONS_TUPLE)
     decision = await authorizer.authorize(
         AuthorizationRequest(
             actor_type=actor["actor_type"],
@@ -98,6 +205,9 @@ async def _authorize_tool(authorizer: Authorizer, tool_name: str) -> str | None:
             subject=actor["sub"],
             client_id=actor["client_id"],
             tool_name=tool_name,
+            sensitivity=annotations[0],
+            cost_class=annotations[1],
+            rate_limit_class=annotations[2],
         )
     )
     if decision.allowed:
@@ -106,6 +216,42 @@ async def _authorize_tool(authorizer: Authorizer, tool_name: str) -> str | None:
         "authz deny: tool=%s reason=%s actor=%s", tool_name, decision.reason, actor.get("actor_type") or "anonymous"
     )
     return f"Forbidden: {decision.reason}"
+
+
+# Per-tool annotation map populated at registration time. Keys are the
+# tool name (the @mcp.tool function name); values are the
+# (sensitivity, cost_class, rate_limit_class) triple. Default entries
+# are seeded lazily on first access via [register_tool_annotations].
+_TOOL_ANNOTATIONS_REGISTRY: dict[str, tuple[str, str, str]] = {}
+_DEFAULT_TOOL_ANNOTATIONS_TUPLE: tuple[str, str, str] = (
+    SENSITIVITY_PUBLIC,
+    COST_METERED,
+    RATE_LIMIT_STANDARD,
+)
+
+
+def register_tool_annotations(
+    tool_name: str,
+    *,
+    sensitivity: str = SENSITIVITY_PUBLIC,
+    cost_class: str = COST_METERED,
+    rate_limit_class: str = RATE_LIMIT_STANDARD,
+) -> None:
+    """Record the architecture-roadmap annotations for a tool.
+
+    Called from each ``register_*_tools`` function alongside the
+    ``@mcp.tool(annotations=...)`` decorator so the wire-level
+    surface (visible to MCP clients) and the policy-port surface
+    (visible to the :func:`_authorize_tool` lookup) stay aligned.
+    Calling with the defaults is a no-op — the registry only stores
+    overrides, so unannotated tools fall through to the constant
+    defaults at authorize time.
+    """
+    if (sensitivity, cost_class, rate_limit_class) == _DEFAULT_TOOL_ANNOTATIONS_TUPLE:
+        # Skip the dict write so the registry only carries overrides;
+        # the lookup falls back to the defaults via .get's default.
+        return
+    _TOOL_ANNOTATIONS_REGISTRY[tool_name] = (sensitivity, cost_class, rate_limit_class)
 
 
 def _read_actor() -> dict[str, str]:
