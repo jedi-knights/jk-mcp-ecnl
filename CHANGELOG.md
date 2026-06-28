@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0 (2026-06-28)
+
+### Features
+
+- **tools:** extended annotations — sensitivity, cost_class, rate_limit_class (P1) (3054d07)
+
 ## 0.4.0 (2026-06-28)
 
 ### Features
