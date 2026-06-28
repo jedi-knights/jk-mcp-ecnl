@@ -23,6 +23,7 @@ import sys
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
+from .adapters.inbound.authorization import build_authorizer
 from .adapters.inbound.mcp_adapter import create_mcp_server
 from .adapters.outbound.athleteone_adapter import AthleteOneAdapter
 from .adapters.outbound.caching_adapter import CachingAdapter
@@ -73,6 +74,7 @@ def build_server(
     path: str = "/mcp",
     auth_settings=None,
     token_verifier=None,
+    authorizer=None,
 ) -> FastMCP:
     """Wire AthleteOneAdapter → retry → cache → ECNLService → FastMCP.
 
@@ -100,6 +102,7 @@ def build_server(
         path=path,
         auth_settings=auth_settings,
         token_verifier=token_verifier,
+        authorizer=authorizer,
     )
 
 
@@ -127,6 +130,9 @@ def main() -> None:
         raise ValueError(f"Invalid MCP_TRANSPORT={transport!r}. Must be one of: {', '.join(_VALID_TRANSPORTS)}")
 
     auth_settings, token_verifier = _build_auth(transport)
+    # Build the inbound authorizer once at startup. Defaults to
+    # PassThroughAuthorizer when MCP_AUTHZ_URL is unset.
+    authorizer = build_authorizer()
 
     # Wire OpenTelemetry before constructing the server so the
     # HTTPXClientInstrumentor patches httpx before any outbound
@@ -150,10 +156,11 @@ def main() -> None:
                 path=path,
                 auth_settings=auth_settings,
                 token_verifier=token_verifier,
+                authorizer=authorizer,
             ).run(transport="streamable-http")
         else:
             logger.info("Starting ECNL MCP server (stdio transport)")
-            build_server(api_host=api_host).run(transport="stdio")
+            build_server(api_host=api_host, authorizer=authorizer).run(transport="stdio")
     finally:
         shutdown_tracing()
 
