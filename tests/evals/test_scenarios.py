@@ -42,6 +42,7 @@ from ecnl.adapters.inbound.mcp_adapter import create_mcp_server
 from ecnl.application.service import ECNLService
 from tests.evals import load_scenarios, run_scenario
 from tests.evals.conftest import _StubDiscovery, _StubRepo
+from tests.evals.judge import judge_from_env
 from tests.evals.scenario_loader import Scenario
 
 _REMOTE_URL = os.environ.get("MCP_EVAL_REMOTE_URL") or None
@@ -103,3 +104,43 @@ def test_loader_finds_at_least_one_scenario() -> None:
     # Uses the unfiltered loader so the guard fires on a truly empty
     # scenarios directory, not on a live-mode filter rejecting all.
     assert len(load_scenarios()) >= 1
+
+
+# ---------------------------------------------------------------------------
+# LLM-as-judge layer
+# ---------------------------------------------------------------------------
+
+
+def _select_judge_scenarios() -> list[Scenario]:
+    candidates = [s for s in load_scenarios() if s.expected_judge]
+    if _REMOTE_URL is None:
+        return candidates
+    return [s for s in candidates if s.live]
+
+
+_JUDGE_SCENARIOS = _select_judge_scenarios()
+_API_KEY_PRESENT = bool(os.environ.get("ANTHROPIC_API_KEY"))
+
+
+@pytest.mark.skipif(
+    not _API_KEY_PRESENT,
+    reason="ANTHROPIC_API_KEY not set; LLM-as-judge tests are opt-in",
+)
+@pytest.mark.skipif(
+    _API_KEY_PRESENT and not _JUDGE_SCENARIOS,
+    reason="no scenarios declare expected_judge criteria",
+)
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scenario", _JUDGE_SCENARIOS, ids=_ids)
+async def test_scenario_judge(scenario: Scenario) -> None:
+    judge = judge_from_env()
+    assert judge is not None  # skipif guards this
+    async with _open_session() as client:
+        result = await run_scenario(scenario, client)
+    assert not result.errors, f"errors during scenario {scenario.name}: {result.errors}\noutput:\n{result.output}"
+    failures: list[str] = []
+    for criterion in scenario.expected_judge:
+        verdict = await judge.evaluate(criterion, result.output)
+        if not verdict.passed:
+            failures.append(f"criterion {criterion!r} failed: {verdict.reason}")
+    assert not failures, f"judge failures in scenario {scenario.name}:\n  " + "\n  ".join(failures)

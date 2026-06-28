@@ -8,3 +8,5 @@ tool_sequence:
 expected_contains:
   - "North Atlantic"
   - "2025-26"
+expected_judge:
+  - "The output lists at least one ECNL event with a conference and a season identifier."
